@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBA球员好感度瓶子</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root{
+    --bg1:#0b1020; --bg2:#141a33; --panel:#161d36; --line:#2a3358;
+    --gold:#f5c542; --txt:#eef1fa; --sub:#9aa3c4;
+  }
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","WenQuanYi Micro Hei",system-ui,sans-serif;
+    background:radial-gradient(1200px 700px at 20% -10%,#1c2752 0%,transparent 60%),
+               radial-gradient(900px 600px at 110% 10%,#3a1d3f 0%,transparent 55%),
+               linear-gradient(160deg,var(--bg1),var(--bg2));
+    color:var(--txt); min-height:100vh; padding:26px 18px 60px;
+  }
+  .wrap{ max-width:1180px; margin:0 auto; }
+
+  /* ===== 顶部 ===== */
+  header.hero{
+    text-align:center; position:relative; padding:34px 20px 26px;
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0));
+    border:1px solid rgba(255,255,255,.08); border-radius:22px;
+    box-shadow:0 20px 50px rgba(0,0,0,.35); overflow:hidden;
+  }
+  header.hero::after{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(600px 200px at 50% -60%,rgba(245,197,66,.18),transparent 70%);
+  }
+  .kicker{ font-size:13px; letter-spacing:4px; color:var(--gold); margin-bottom:12px; font-weight:700; }
+  h1{ font-size:34px; letter-spacing:2px; }
+  h1 em{ font-style:normal; color:var(--gold); }
+  .desc{ color:var(--sub); font-size:14px; margin-top:12px; line-height:1.7; }
+  .legend{ display:inline-flex; align-items:center; gap:8px; margin-top:14px;
+    background:rgba(255,255,255,.05); border:1px solid var(--line);
+    padding:7px 16px; border-radius:30px; font-size:13px; color:var(--sub); }
+  .legend i{ width:14px; height:14px; border-radius:4px;
+    background:linear-gradient(180deg,#ff6b6b,#b30000); box-shadow:0 0 10px rgba(255,40,40,.6); }
+
+  .tools{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:18px; }
+  button{ font-family:inherit; cursor:pointer; font-size:14px; font-weight:700;
+    padding:10px 20px; border-radius:30px; border:1px solid var(--line);
+    background:rgba(255,255,255,.06); color:var(--txt); transition:.2s; }
+  button:hover{ background:rgba(255,255,255,.14); transform:translateY(-1px); }
+  button.primary{ background:linear-gradient(135deg,#e52d27,#b31217); border-color:#ff5a5a;
+    box-shadow:0 8px 22px rgba(229,45,39,.4); }
+  .name-input{ font-family:inherit; font-size:14px; padding:10px 16px; border-radius:30px;
+    border:1px solid var(--line); background:rgba(0,0,0,.25); color:var(--txt); width:170px; outline:none; }
+  .name-input:focus{ border-color:var(--gold); }
+
+  /* ===== 网格 ===== */
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:18px; margin-top:30px; }
+  .card{
+    position:relative; border-radius:16px; padding:16px 12px 14px; text-align:center;
+    background:linear-gradient(160deg,#1a2140,#121730);
+    border:1px solid #2c355c; box-shadow:0 12px 28px rgba(0,0,0,.4);
+    transition:.25s;
+  }
+  .card::before{ content:""; position:absolute; inset:0; border-radius:16px; padding:1px;
+    background:linear-gradient(150deg,rgba(245,197,66,.55),transparent 40%,rgba(120,90,255,.35));
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
+  .card:hover{ transform:translateY(-4px); box-shadow:0 18px 38px rgba(0,0,0,.55); }
+
+  .player{ font-size:15px; font-weight:800; letter-spacing:1px; margin-bottom:4px; }
+  .team{ font-size:11px; color:var(--sub); margin-bottom:12px; }
+
+  /* ===== 瓶子 ===== */
+  .bottle{ position:relative; width:74px; height:150px; margin:0 auto; cursor:pointer; }
+  .bottle svg{ width:100%; height:100%; overflow:visible; }
+  .glass{ fill:none; stroke:rgba(255,255,255,.55); stroke-width:2; }
+  .glass-shine{ fill:none; stroke:rgba(255,255,255,.28); stroke-width:3; stroke-linecap:round; }
+  .liquid-clip{ transition:height .35s cubic-bezier(.4,1.6,.5,1); }
+  /* 液体：红渐变 */
+  .liquid{ fill:url(#liqGrad); }
+  /* 气泡 */
+  .bubble{ fill:rgba(255,255,255,.7); }
+  /* 刻度 */
+  .ticks line{ stroke:rgba(255,255,255,.18); stroke-width:1; }
+  .neck{ fill:none; stroke:rgba(255,255,255,.55); stroke-width:2; }
+  .cap{ fill:url(#capGrad); }
+  .score{ margin-top:10px; font-size:13px; font-weight:700; color:var(--gold);
+    font-variant-numeric:tabular-nums; }
+  .score span{ color:var(--sub); font-weight:400; font-size:11px; }
+
+  /* ===== 滑块 ===== */
+  .slider{ width:100%; margin-top:8px; -webkit-appearance:none; appearance:none;
+    height:5px; border-radius:4px; background:linear-gradient(90deg,#b30000,#ff5a5a);
+    outline:none; }
+  .slider::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none;
+    width:16px; height:16px; border-radius:50%; background:#fff; cursor:pointer;
+    box-shadow:0 0 0 4px rgba(255,90,90,.25),0 2px 6px rgba(0,0,0,.5); }
+  .slider::-moz-range-thumb{ width:16px; height:16px; border:0; border-radius:50%;
+    background:#fff; cursor:pointer; box-shadow:0 0 0 4px rgba(255,90,90,.25); }
+
+  /* ===== 底部 & 导出 ===== */
+  footer{ text-align:center; color:var(--sub); font-size:12px; margin-top:34px; line-height:1.9; }
+  .result-bar{ max-width:1180px; margin:26px auto 0; display:none;
+    background:linear-gradient(160deg,#1a2140,#121730); border:1px solid #2c355c;
+    border-radius:18px; padding:20px; }
+  .result-bar.show{ display:block; }
+  .result-bar h2{ font-size:16px; margin-bottom:14px; color:var(--gold); }
+  .rb-list{ max-height:460px; overflow:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th,td{ padding:8px 10px; text-align:left; border-bottom:1px solid rgba(255,255,255,.06); }
+  th{ color:var(--sub); font-weight:600; position:sticky; top:0; background:#1a2140; }
+  .bar-cell{ width:45%; }
+  .mini{ position:relative; height:12px; border-radius:8px; background:rgba(255,255,255,.08); overflow:hidden; }
+  .mini i{ position:absolute; left:0; top:0; bottom:0; border-radius:8px;
+    background:linear-gradient(90deg,#ff5a5a,#b30000); transition:width .5s ease; }
+  .rb-actions{ display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+  .empty-hint{ text-align:center; color:var(--sub); font-size:13px; padding:40px 0; }
+
+  @media (max-width:520px){
+    h1{ font-size:25px; }
+    .grid{ grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:14px; }
+    .bottle{ width:66px; height:134px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">NBA · LIKABILITY</div>
+    <h1>NBA 球员 <em>好感度瓶子</em></h1>
+    <p class="desc">拖动滑块，为每位球员注入红色好感度。<br>填完点击下方按钮，生成你的专属好感度卡片并分享。</p>
+    <div class="legend"><i></i>瓶内红色越满 = 好感度越高（0~100）</div>
+
+    <div class="tools">
+      <input class="name-input" id="uname" placeholder="你的昵称（可选）" maxlength="12">
+      <button onclick="batch(100)">一键拉满</button>
+      <button onclick="batch(0)">全部清空</button>
+      <button class="primary" onclick="genResult()">生成好感度卡片</button>
+      <button onclick="downloadCard()">保存为图片</button>
+    </div>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="result-bar" id="rb">
+    <h2 id="rbTitle">我的 NBA 球员好感度排行</h2>
+    <div class="rb-list">
+      <table>
+        <thead><tr><th style="width:34%">球员</th><th class="bar-cell">好感度</th><th style="width:14%">评分</th></tr></thead>
+        <tbody id="rbBody"></tbody>
+      </table>
+    </div>
+    <div class="rb-actions">
+      <button onclick="document.getElementById('rb').classList.remove('show')">收起</button>
+    </div>
+  </div>
+
+  <footer>
+    拖动每个瓶子的滑块调整好感度，瓶内红色会随之升降。<br>
+    点击瓶子也可直接跳到 50 分。名单与人数可随时替换。
+  </footer>
+</div>
+
+<!-- SVG 渐变定义 -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="liqGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff7a7a"/>
+      <stop offset="35%" stop-color="#ff3b3b"/>
+      <stop offset="100%" stop-color="#9b0000"/>
+    </linearGradient>
+    <linearGradient id="capGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f5c542"/>
+      <stop offset="100%" stop-color="#b8860b"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<script>
+/* ============ 球员名单（可自行增删改） ============ */
+/* 默认名单（想自己给名单，直接改这里即可） */
+const PLAYERS = [
+  {n:"库里",     t:"勇士"},
+  {n:"詹姆斯",   t:"湖人"},
+  {n:"杜兰特",   t:"火箭"},
+  {n:"约基奇",   t:"掘金"},
+  {n:"东契奇",   t:"湖人"},
+  {n:"字母哥",   t:"雄鹿"},
+  {n:"塔图姆",   t:"凯尔特人"},
+  {n:"恩比德",   t:"76人"},
+  {n:"亚历山大", t:"雷霆"},
+  {n:"爱德华兹", t:"森林狼"},
+  {n:"布克",     t:"太阳"},
+  {n:"戴维斯",   t:"独行侠"},
+  {n:"哈利伯顿", t:"步行者"},
+  {n:"利拉德",   t:"雄鹿"},
+  {n:"莫兰特",   t:"灰熊"},
+  {n:"巴特勒",   t:"勇士"},
+  {n:"伦纳德",   t:"快船"},
+  {n:"杨",       t:"老鹰"},
+  {n:"米切尔",   t:"骑士"},
+  {n:"布朗",     t:"凯尔特人"},
+];
+// 去重后的默认顺序（如果你想自己给名单，直接改上面 PLAYERS 数组即可）
+const LIST = Array.from(new Map(PLAYERS.map(p=>[p.n,p])).values());
+
+const LIQ_H = 110;      // 液体可填充高度
+const LIQ_TOP = 26;     // 液体顶部（瓶底 = LIQ_TOP + LIQ_H）
+const BOT_W = 56;       // 瓶身宽度
+
+let data = {};
+LIST.forEach(p=> data[p.n] = 60);   // 默认 60 分
+
+/* ============ 渲染瓶子 ============ */
+const grid = document.getElementById('grid');
+
+LIST.forEach(p=>{
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="player">${p.n}</div>
+    <div class="team">${p.t}</div>
+    <div class="bottle" data-name="${p.n}">
+      <svg viewBox="0 0 74 150">
+        <!-- 瓶身轮廓 -->
+        <path class="glass" d="M30 6 H44 V20
+             C58 26 62 34 62 ${LIQ_TOP+LIQ_H}
+             C62 ${LIQ_TOP+LIQ_H+8} 56 ${LIQ_TOP+LIQ_H+14} 37 ${LIQ_TOP+LIQ_H+14}
+             C18 ${LIQ_TOP+LIQ_H+14} 12 ${LIQ_TOP+LIQ_H+8} 12 ${LIQ_TOP+LIQ_H}
+             C12 34 16 26 30 20 Z"/>
+        <!-- 液体裁剪区 -->
+        <clipPath id="clip-${cssId(p.n)}">
+          <rect class="liquid-clip" id="clipRect-${cssId(p.n)}" x="14" y="${LIQ_TOP+LIQ_H}" width="46" height="0"/>
+        </clipPath>
+        <g clip-path="url(#clip-${cssId(p.n)})">
+          <rect class="liquid" x="14" y="${LIQ_TOP-4}" width="46" height="${LIQ_H+16}"/>
+          <!-- 气泡 -->
+          <circle class="bubble" cx="26" cy="${LIQ_TOP+LIQ_H-10}" r="2"/>
+          <circle class="bubble" cx="40" cy="${LIQ_TOP+LIQ_H-22}" r="1.4"/>
+          <circle class="bubble" cx="32" cy="${LIQ_TOP+LIQ_H-40}" r="1.8"/>
+          <circle class="bubble" cx="44" cy="${LIQ_TOP+LIQ_H-58}" r="1.3"/>
+          <circle class="bubble" cx="24" cy="${LIQ_TOP+LIQ_H-74}" r="1.6"/>
+          <!-- 液面高光 -->
+          <ellipse cx="37" cy="0" id="surf-${cssId(p.n)}" rx="20" ry="3" fill="rgba(255,255,255,.35)"/>
+        </g>
+        <!-- 瓶身高光 -->
+        <path class="glass-shine" d="M19 40 V ${LIQ_TOP+LIQ_H-6}" />
+        <path class="glass-shine" d="M55 44 V ${LIQ_TOP+LIQ_H-6}" opacity=".5"/>
+        <!-- 刻度 -->
+        <g class="ticks">
+          ${[0,.25,.5,.75,1].map(f=>{
+             const y = LIQ_TOP+LIQ_H - f*LIQ_H;
+             return `<line x1="14" y1="${y}" x2="20" y2="${y}"/>`;
+           }).join('')}
+        </g>
+        <!-- 瓶盖 -->
+        <rect class="cap" x="29" y="2" width="16" height="8" rx="2"/>
+        <rect class="cap" x="29" y="9" width="16" height="3" rx="1" opacity=".7"/>
+      </svg>
+    </div>
+    <div class="score" id="score-${cssId(p.n)}">60 <span>/ 100</span></div>
+    <input type="range" class="slider" min="0" max="100" value="60" data-name="${p.n}">
+  `;
+  grid.appendChild(card);
+});
+
+function cssId(name){ return 'b' + name.replace(/\s|·/g,'_'); }
+
+/* ============ 更新液体 ============ */
+function setLiquid(name, val){
+  val = Math.max(0, Math.min(100, val));
+  data[name] = val;
+  const h = (val/100) * LIQ_H;
+  const rect = document.getElementById('clipRect-'+cssId(name));
+  rect.setAttribute('y', LIQ_TOP + LIQ_H - h);
+  rect.setAttribute('height', Math.max(h, 0));
+  document.getElementById('surf-'+cssId(name)).setAttribute('cy', LIQ_TOP + LIQ_H - h - 1);
+  document.getElementById('score-'+cssId(name)).innerHTML = `${val} <span>/ 100</span>`;
+}
+
+document.querySelectorAll('.slider').forEach(s=>{
+  s.addEventListener('input', e=> setLiquid(e.target.dataset.name, +e.target.value));
+});
+document.querySelectorAll('.bottle').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const name = b.dataset.name;
+    const cur = data[name];
+    const nv = cur === 50 ? 100 : 50;
+    const card = b.closest('.card');
+    card.querySelector('.slider').value = nv;
+    setLiquid(name, nv);
+  });
+});
+
+/* ============ 工具 ============ */
+function batch(v){
+  LIST.forEach(p=>{
+    document.querySelector(`.slider[data-name="${p.n}"]`).value = v;
+    setLiquid(p.n, v);
+  });
+}
+
+function genResult(){
+  const sorted = [...LIST].sort((a,b)=> data[b.n]-data[a.n]);
+  const body = document.getElementById('rbBody');
+  const uname = document.getElementById('uname').value.trim() || '匿名球迷';
+  document.getElementById('rbTitle').textContent = `${uname} 的 NBA 球员好感度排行`;
+  body.innerHTML = sorted.map((p,i)=>`
+    <tr>
+      <td><b>${i+1}.</b> ${p.n} <span style="color:var(--sub);font-size:11px">${p.t}</span></td>
+      <td class="bar-cell"><div class="mini"><i style="width:${data[p.n]}%"></i></div></td>
+      <td style="color:var(--gold);font-weight:700">${data[p.n]}</td>
+    </tr>`).join('');
+  document.getElementById('rb').classList.add('show');
+  document.getElementById('rb').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+/* 简易截图导出（依赖 Canvas 时需引入 html2canvas；此处导出排行表为图片） */
+function downloadCard(){
+  const rb = document.getElementById('rb');
+  if(!rb.classList.contains('show')) genResult();
+  const title = document.getElementById('rbTitle').textContent;
+  const rows = [...document.querySelectorAll('#rbBody tr')];
+  const c = document.createElement('canvas');
+  const W = 620, rowH = 30, topPad = 70, botPad = 30;
+  c.width = W; c.height = topPad + rows.length*rowH + botPad;
+  const ctx = c.getContext('2d');
+  const grd = ctx.createLinearGradient(0,0,0,c.height);
+  grd.addColorStop(0,'#1a2140'); grd.addColorStop(1,'#121730');
+  ctx.fillStyle = grd; ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle = '#f5c542'; ctx.font = 'bold 22px sans-serif';
+  ctx.fillText(title, 26, 42);
+  ctx.font = '13px sans-serif';
+  rows.forEach((tr,i)=>{
+    const y = topPad + i*rowH;
+    const cells = tr.querySelectorAll('td');
+    ctx.fillStyle = i%2?'rgba(255,255,255,.03)':'transparent';
+    ctx.fillRect(20, y-16, W-40, rowH-4);
+    ctx.fillStyle = '#eef1fa'; ctx.font = '14px sans-serif';
+    ctx.fillText(cells[0].textContent.trim(), 34, y+2);
+    // 条
+    const bx = 230, bw = 280, bh = 11;
+    ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(bx,y-11,bw,bh,6) : ctx.rect(bx,y-11,bw,bh);
+    ctx.fill();
+    const v = parseInt(cells[2].textContent);
+    const lg = ctx.createLinearGradient(bx,0,bx+v/100*bw,0);
+    lg.addColorStop(0,'#ff5a5a'); lg.addColorStop(1,'#b30000');
+    ctx.fillStyle = lg; ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(bx,y-11,v/100*bw,bh,6) : ctx.rect(bx,y-11,v/100*bw,bh);
+    ctx.fill();
+    ctx.fillStyle = '#f5c542'; ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(v, 528, y+2);
+  });
+  const a = document.createElement('a');
+  a.download = 'NBA好感度排行.png';
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+</script>
+</body>
+</html>
